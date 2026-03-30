@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Results - Intelligence Platform{% endblock %}
+
+{% block content %}
+<div class="results-header"
+    style="margin-bottom: 2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+    <div>
+        <h2 style="margin:0;">Intelligence Results</h2>
+        <p class="text-muted" style="margin:.25rem 0 0;">Analyzed social media posts based on your watch words.</p>
+    </div>
+    <div style="display:flex;gap:.7rem;align-items:center;">
+        {% set role_colors = {'Admin':'#ef4444','Analyst':'#10b981','Viewer':'#94a3b8'} %}
+        <span
+            style="padding:.3rem .8rem;border-radius:6px;font-size:.8rem;font-weight:600;background:rgba(0,0,0,.2);color:{{ role_colors.get(session.get('role','Viewer'),'#94a3b8') }};border:1px solid {{ role_colors.get(session.get('role','Viewer'),'#94a3b8') }}44;">
+            {{ session.get('role','Viewer') }}
+        </span>
+        {% if session.get('role') in ['Admin','Analyst'] %}
+        <a href="{{ url_for('export_results') }}"
+            style="padding:.4rem .9rem;background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);border-radius:6px;text-decoration:none;font-size:.85rem;font-weight:600;">⬇
+            Export CSV</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card"
+    style="margin-bottom: 2rem; padding: 1.5rem; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+    <form method="GET" action="{{ url_for('results') }}" class="filter-form"
+        style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="platform">Platform</label>
+            <select id="platform" name="platform" class="form-control"
+                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;">
+                <option value="">All Platforms</option>
+                {% for p in platforms %}
+                <option value="{{ p }}" {% if current_platform==p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="keyword">Keyword</label>
+            <select id="keyword" name="keyword" class="form-control"
+                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;">
+                <option value="">All Keywords</option>
+                {% for k in keywords %}
+                <option value="{{ k }}" {% if current_keyword==k %}selected{% endif %}>{{ k }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="category">Category</label>
+            <select id="category" name="category" class="form-control"
+                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;">
+                <option value="">All Categories</option>
+                {% for c in categories %}
+                <option value="{{ c }}" {% if current_category==c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="flex: 0 0 auto;">
+            <button type="submit" class="btn-primary" style="height: 100%;">Apply Filters</button>
+            <a href="{{ url_for('results') }}" class="btn-outline"
+                style="text-decoration: none; display: inline-block; margin-left: 0.5rem; padding: 0.75rem 1rem;">Clear</a>
+        </div>
+    </form>
+</div>
+
+<div
+    style="background:var(--card-bg);border-radius:12px;border:1px solid var(--border-color);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3);">
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;text-align:left;">
+            <thead style="background:rgba(0,0,0,.3);border-bottom:2px solid var(--border-color);">
+                <tr>
+                    <th
+                        style="width:12%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;">
+                        Platform</th>
+                    <th
+                        style="width:13%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;">
+                        Username</th>
+                    <th
+                        style="width:35%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;">
+                        Post</th>
+                    <th
+                        style="width:8%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;text-align:center;">
+                        Score</th>
+                    <th
+                        style="width:12%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;">
+                        Category</th>
+                    <th
+                        style="width:10%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;">
+                        Date</th>
+                    {% if session.get('role') in ['Admin','Analyst'] %}
+                    <th
+                        style="width:10%;padding:.9rem 1rem;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;white-space:nowrap;">
+                        Action</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                <tr
+                    style="border-bottom:1px solid var(--border-color);{% if post.is_high_risk %}background:rgba(220,38,38,.04);{% endif %}">
+                    <td
+                        style="padding:.8rem 1rem;font-weight:600;color:{% if post.platform=='Twitter' %}#10b981{% elif post.platform=='Facebook' %}#3b82f6{% elif post.platform=='Instagram' %}#8b5cf6{% else %}#06b6d4{% endif %};">
+                        {{post.platform}}</td>
+                    <td style="padding:.8rem 1rem;color:var(--primary-color);">@{{post.username}}</td>
+                    <td style="padding:.8rem 1rem;font-size:.9rem;line-height:1.5;">
+                        {% set highlighted_text = post.post_text | replace(post.keyword, '<span
+                            style="background-color:rgba(239,68,68,0.2);color:#fca5a5;padding:0.15rem 0.35rem;border-radius:4px;border:1px solid rgba(239,68,68,0.4);font-weight:600;">'
+                            ~ post.keyword ~ '</span>') | safe %}
+                        {% set capitalized_keyword = post.keyword.capitalize() %}
+                        {% set title_keyword = post.keyword.title() %}
+                        {% set upper_keyword = post.keyword.upper() %}
+                        {% set display_text = highlighted_text | replace(capitalized_keyword, '<span
+                            style="background-color:rgba(239,68,68,0.2);color:#fca5a5;padding:0.15rem 0.35rem;border-radius:4px;border:1px solid rgba(239,68,68,0.4);font-weight:600;">'
+                            ~ capitalized_keyword ~ '</span>') | replace(title_keyword, '<span
+                            style="background-color:rgba(239,68,68,0.2);color:#fca5a5;padding:0.15rem 0.35rem;border-radius:4px;border:1px solid rgba(239,68,68,0.4);font-weight:600;">'
+                            ~ title_keyword ~ '</span>') | replace(upper_keyword, '<span
+                            style="background-color:rgba(239,68,68,0.2);color:#fca5a5;padding:0.15rem 0.35rem;border-radius:4px;border:1px solid rgba(239,68,68,0.4);font-weight:600;">'
+                            ~ upper_keyword ~ '</span>') | safe %}
+                        {{ display_text }}
+                        {% if post.is_high_risk %}
+                        <span
+                            style="display:inline-block;background:rgba(220,38,38,.2);color:#f87171;padding:.15rem .4rem;border-radius:9999px;font-size:.68rem;font-weight:700;margin-left:.3rem;border:1px solid #ef4444;animation:blink 1.5s ease-in-out infinite;">🔴
+                            HIGH RISK</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding:.8rem 1rem;text-align:center;">
+                        <span
+                            style="font-size:1rem;font-weight:700;color:{% if post.threat_score >= 8 %}#f87171{% elif post.threat_score >= 5 %}#fcd34d{% else %}#6ee7b7{% endif %};">{{post.threat_score}}/10</span>
+                    </td>
+                    <td style="padding:.8rem 1rem;">
+                        {% set type_colors = {'Cyber Threat':'#fca5a5','General Discussion':'#94a3b8','Security
+                        Alert':'#fcd34d'} %}
+                        {% set type_bg = {'Cyber Threat':'rgba(239,68,68,.15)','General
+                        Discussion':'rgba(148,163,184,.15)','Security Alert':'rgba(245,158,11,.15)'} %}
+                        <span
+                            style="background:{{type_bg.get(post.category,'rgba(100,100,100,.1)')}};color:{{type_colors.get(post.category,'#ccc')}};padding:.25rem .55rem;border-radius:4px;font-size:.78rem;white-space:nowrap;">{{post.category}}</span>
+                    </td>
+                    <td style="padding:.8rem 1rem;font-size:.8rem;color:var(--text-muted);white-space:nowrap;">
+                        {{post.timestamp[:10]}}</td>
+                    {% if session.get('role') in ['Admin','Analyst'] %}
+                    <td style="padding:.8rem 1rem;">
+                        <form method="GET" action="{{ url_for('delete_post', pid=post.id) }}"
+                            onsubmit="return confirm('Delete this post?')">
+                            <button type="submit"
+                                style="padding:.25rem .55rem;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);border-radius:4px;cursor:pointer;font-size:.75rem;">✕</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{% if session.get('role') in ['Admin','Analyst'] %}7{% else %}6{% endif %}"
+                        style="padding:2rem;text-align:center;color:var(--text-muted);">No posts found. Start by adding
+                        watch words.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
